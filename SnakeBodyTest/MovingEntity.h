@@ -276,40 +276,26 @@ public:
       
       // Now attach fixtures to the body.
       FixtureDef fixtureDef;
-      PolygonShape polyShape;
-      vector<Vec2> vertices;
+      b2CircleShape circleShape;
       
-      const float32 VERT_SCALE = .5;
-      fixtureDef.shape = &polyShape;
+      const float64 BODY_RADIUS = 1.0;
+      
+      fixtureDef.shape = &circleShape;
       fixtureDef.density = 1.0;
       fixtureDef.friction = 1.0;
       fixtureDef.isSensor = false;
       
       // Nose
-      vertices.clear();
-      vertices.push_back(Vec2(4*VERT_SCALE,2*VERT_SCALE));
-      vertices.push_back(Vec2(4*VERT_SCALE,-2*VERT_SCALE));
-      vertices.push_back(Vec2(8*VERT_SCALE,-0.5*VERT_SCALE));
-      vertices.push_back(Vec2(8*VERT_SCALE,0.5*VERT_SCALE));
-      polyShape.Set(&vertices[0],vertices.size());
+      circleShape.m_radius = BODY_RADIUS*1.25;
       body->CreateFixture(&fixtureDef);
-      body->SetLinearDamping(0.25);
-      body->SetAngularDamping(0.25);
-
-      // Main body
-      vertices.clear();
-      vertices.push_back(Vec2(-4*VERT_SCALE,2*VERT_SCALE));
-      vertices.push_back(Vec2(-4*VERT_SCALE,-2*VERT_SCALE));
-      vertices.push_back(Vec2(4*VERT_SCALE,-2*VERT_SCALE));
-      vertices.push_back(Vec2(4*VERT_SCALE,2*VERT_SCALE));
-      polyShape.Set(&vertices[0],vertices.size());
-      body->CreateFixture(&fixtureDef);
+      body->SetLinearDamping(4);
+      body->SetAngularDamping(4);
       
       // NOW, create several duplicates of the "Main Body" fixture
       // but offset them from the previous one by a fixed amount and
       // overlap them a bit.
-      const uint32 SNAKE_SEGMENTS = 4;
-      Vec2 offset(-4*VERT_SCALE,0*VERT_SCALE);
+      const uint32 SNAKE_SEGMENTS = 16;
+      
       b2Body* pBodyA = body;
       b2Body* pBodyB = NULL;
       b2RevoluteJointDef revJointDef;
@@ -319,24 +305,23 @@ public:
       for(int idx = 0; idx < SNAKE_SEGMENTS; idx++)
       {
          // Create a body for the next segment.
+         float64 bodyRadius = BODY_RADIUS;
+         if(idx > SNAKE_SEGMENTS*2/3)
+         {
+            bodyRadius *= pow(0.9,idx-SNAKE_SEGMENTS*2/3+1);
+         }
+         Vec2 offset(-1.75*bodyRadius,0);
          bodyDef.position = pBodyA->GetPosition() + offset;
          pBodyB = world.CreateBody(&bodyDef);
-         _segments.push_back(pBodyB);
-         // Add some damping so body parts don't 'flop' around.
-         pBodyB->SetLinearDamping(0.25);
-         pBodyB->SetAngularDamping(0.25);
-         // Offset the vertices for the fixture.
-         for(int vidx = 0; vidx < vertices.size(); vidx++)
-         {
-            vertices[vidx] += offset;
-         }
-         // and create the fixture.
-         polyShape.Set(&vertices[0],vertices.size());
+         circleShape.m_radius = bodyRadius;
          pBodyB->CreateFixture(&fixtureDef);
+         // Drag on the body as the segments get longer
+         pBodyB->SetLinearDamping(0.5*(1+idx));
+         pBodyB->SetAngularDamping(0.5*(1+idx));
          
          // Create a Revolute Joint at a position half way
          // between the two bodies.
-         Vec2 midpoint = (pBodyA->GetPosition() + pBodyB->GetPosition());
+         Vec2 midpoint = 0.5*(pBodyA->GetPosition() + pBodyB->GetPosition());
          revJointDef.Initialize(pBodyA, pBodyB, midpoint);
          world.CreateJoint(&revJointDef);
          // Update so the next time through the loop, we are
@@ -344,41 +329,6 @@ public:
          // created.
          pBodyA = pBodyB;
       }
-      // Make the next bunch of segments get "smaller" each time
-      // to make a tail.
-      for(int idx = 0; idx < SNAKE_SEGMENTS; idx++)
-      {
-         // Create a body for the next segment.
-         bodyDef.position = pBodyA->GetPosition() + offset;
-         pBodyB = world.CreateBody(&bodyDef);
-         _segments.push_back(pBodyB);
-         // Add some damping so body parts don't 'flop' around.
-         pBodyB->SetLinearDamping(0.25);
-         pBodyB->SetAngularDamping(0.25);
-         // Offset the vertices for the fixture.
-         for(int vidx = 0; vidx < vertices.size(); vidx++)
-         {
-            vertices[vidx] += offset;
-            vertices[vidx].y *= 0.75;
-         }
-         // and create the fixture.
-         polyShape.Set(&vertices[0],vertices.size());
-         pBodyB->CreateFixture(&fixtureDef);
-         
-         // Create a Revolute Joint at a position half way
-         // between the two bodies.
-         Vec2 midpoint = (pBodyA->GetPosition() + pBodyB->GetPosition());
-         revJointDef.Initialize(pBodyA, pBodyB, midpoint);
-         world.CreateJoint(&revJointDef);
-         // Update so the next time through the loop, we are
-         // connecting the next body to the one we just
-         // created.
-         pBodyA = pBodyB;
-      }
-      // Give the tail some real "drag" so that it pulls the
-      // body straight when it can.
-      pBodyB->SetLinearDamping(1.5);
-      pBodyB->SetAngularDamping(1.5);
       
       // Setup Parameters
       SetMaxAngularAcceleration(4*M_PI);
@@ -387,7 +337,7 @@ public:
       // very quickly so the entity does not "circle" the
       // point.
       SetMaxLinearAcceleration(100);
-      SetMaxSpeed(10);
+      SetMaxSpeed(20);
       SetMinSeekDistance(1.0);
    }
    

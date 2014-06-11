@@ -2722,7 +2722,6 @@
 					"-lxml2",
 					"-lz",
 					"-lsqlite3",
-					"-websockets",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "\"SnakeBodyTest/libs\"";
@@ -2748,7 +2747,6 @@
 					"-lxml2",
 					"-lz",
 					"-lsqlite3",
-					"-websockets",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "\"SnakeBodyTest/libs\"";
